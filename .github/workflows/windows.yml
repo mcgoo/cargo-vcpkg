@@ -4,43 +4,12 @@ on:
   push:
   pull_request:
   schedule:
-    - cron: "35 7 * * *" # UTC
+    - cron: "35 2 * * *"
 
 jobs:
   build:
     runs-on: windows-latest
-    strategy:
-      matrix:
-        config:
-          - {
-              target: "x86_64-pc-windows-msvc",
-              VCPKG_DEFAULT_TRIPLET: "x64-windows-static",
-              RUSTFLAGS: "-Ctarget-feature=+crt-static",
-            }
-          - {
-              target: "x86_64-pc-windows-msvc",
-              VCPKG_DEFAULT_TRIPLET: "x64-windows-static-md",
-            }
-          - {
-              target: "x86_64-pc-windows-msvc",
-              VCPKG_DEFAULT_TRIPLET: "x64-windows",
-              VCPKGRS_DYNAMIC: 1,
-            }
-          - {
-              target: "i686-pc-windows-msvc",
-              VCPKG_DEFAULT_TRIPLET: "x86-windows-static",
-              RUSTFLAGS: "-Ctarget-feature=+crt-static",
-            }
-          - {
-              target: "i686-pc-windows-msvc",
-              VCPKG_DEFAULT_TRIPLET: "x86-windows-static-md",
-            }
-          - {
-              target: "i686-pc-windows-msvc",
-              VCPKG_DEFAULT_TRIPLET: "x86-windows",
-              VCPKGRS_DYNAMIC: 1,
-            }
-      fail-fast: false
+
     steps:
       - uses: actions/checkout@v2
       - name: Run cargo-vcpkg integration tests

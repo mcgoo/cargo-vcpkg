@@ -5,6 +5,7 @@ on:
   pull_request:
   schedule:
     - cron: "35 2 * * *"
+
 jobs:
   build:
     runs-on: macos-latest
