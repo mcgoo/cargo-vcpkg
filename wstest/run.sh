@@ -8,7 +8,7 @@ unset VCPKG_ROOT
 unset RUSTFLAGS
 unset VCPKGRS_DYNAMIC
 
-pushd ../cargo-vcpkg
+pushd ..
 cargo install --path .
 popd
 
