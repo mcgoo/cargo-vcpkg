@@ -72,6 +72,10 @@
 
 - vcpkg now has a community supported triplet called x64-windows-static-md which is a match for the default Rust build type on windows - dynamic linking to the c runtime, and static linking to other libraries.
 
+- mention more clearly that vcpkg is only useful in build.rs and it should be added in build-dependencies
+
+- add a better error message than the spurious NotMSVC if find_package gets run from an app rather than in build.rs
+
 ## Creating empty files from list files
 
 ```sh

@@ -1,76 +1,56 @@
-# Changelog
+# Changelog for cargo-vcpkg
 
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html) as implemented by Cargo.
 
-## [Unreleased] - 2020-12-10
+## [0.1.5] - 2020-06-10
+
+### Fixes
+
+- Fixes 'dev-dependencies' key handling for 'target' settings.
+
+## [0.1.4] - 2020-06-10
 
 ### Added
 
-- @perlmint added support for using custom vcpkg triplets. Thanks!
-- add support for M1/aarch64-apple-darwin/arm64-osx
+- Added 'dev-dependencies' key in [package.metadata.vcpkg] to allow installing
+  additional packages for development and testing without requiring the end user to
+  build those packages.
 
-## [0.2.10] - 2020-06-10
+### Changed
 
-### Added
+- Changed 'install' key in [package.metadata.vcpkg] to 'dependencies'. ('install' continues to work.)
 
-- add support for "dynamic crt, static everything else" on Windows, using vcpkg triplet x64-windows-static-md.
-
-## [0.2.9] - 2020-05-31
-
-### Added
-
-- add support for `cargo-vcpkg`
-
-## [0.2.8] - 2019-12-01
+## [0.1.3] - 2020-06-04
 
 ### Added
 
-- @fungos added the ability to specify the location of a vcpkg tree in code. Thanks!
+- On macOS, if Apple clang 11 or later is available, try to bootstrap vcpkg with it first. If this fails, the build will be retried, which will require another compiler.
 
-## [0.2.7] - 2019-06-29
-
-### Added
-
-- Added support for Linux and MacOS.
+## [0.1.2] - 2020-06-01
 
 ### Fixed
 
-- If different versions of a port were installed for different triplets in vcpkg, vcpkg-rs would not be able to find the port in
-  some triplets.
-
-## [0.2.6] - 2018-08-21
-
-### Changed
-
-- Extra libraries that are required by optional features will now be linked. For example, if `harfbuzz` is installed with the `icu` feature (making it depend on the `icu` port), libraries from the `icu` port will be linked. Fixes [#7](https://github.com/mcgoo/vcpkg-rs/issues/7)
-
-## [0.2.5] - 2018-08-15
-
-### Changed
-
-- Fix for failure to find packages that have a description that spans multiple lines [#8](https://github.com/mcgoo/vcpkg-rs/issues/8)
-
-## [0.2.4] - 2018-06-14
+- Fixed help when running under cargo.
+- Added pull a step when using a branch so the branch tracks the remote  
+  correctly.
 
 ### Added
 
-- `vcpkg::find_package()` and `vcpkg::Config::find_package()` which follow dependencies and use the correct names for libraries.
+- Display names of packages as they are being built.
+- Added some more useful information to the error that is displayed
+  if there is no vcpkg metadata in the root crate.
 
-### Deprecated
+## [0.1.1] - 2020-06-01
 
-- `vcpkg::probe_package()` and `vcpkg::Config::probe()` are deprecated because they require the filename of the library which can change. Using `vcpkg::find_package()` and `vcpkg::Config::find_package()` will look up the correct names for the DLLs and libraries in the Vcpkg installation.
+### Fixed
 
-## [0.2.3] - 2018-04-12
+- Fixed building from a cmd.exe shell on Windows.
 
-### Changed
-
-- Fix for linking to libraries that contain '.' by @Matrix-Zhang
-
-## [0.2.2] - 2017-06-15
+## [0.1.0] - 2020-05-31
 
 ### Added
 
-- This is the initial version
+- Initial release
