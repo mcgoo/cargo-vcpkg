@@ -1,6 +1,8 @@
-# vcpkg-rs [![Windows](https://github.com/mcgoo/vcpkg-rs/workflows/Windows/badge.svg?branch=master)](https://github.com/mcgoo/vcpkg-rs/actions?query=workflow%3AWindows) [![macOS](https://github.com/mcgoo/vcpkg-rs/workflows/macOS/badge.svg?branch=master)](https://github.com/mcgoo/vcpkg-rs/actions?query=workflow%3AmacOS) [![Linux](https://github.com/mcgoo/vcpkg-rs/workflows/Linux/badge.svg?branch=master)](https://github.com/mcgoo/vcpkg-rs/actions?query=workflow%3ALinux)
+# vcpkg-rs [![Windows](https://github.com/mcgoo/cargo-vcpkg/workflows/Windows/badge.svg?branch=master)](https://github.com/mcgoo/cargo-vcpkg/actions?query=workflow%3AWindows) [![macOS](https://github.com/mcgoo/cargo-vcpkg/workflows/macOS/badge.svg?branch=master)](https://github.com/mcgoo/cargo-vcpkg/actions?query=workflow%3AmacOS) [![Linux](https://github.com/mcgoo/cargo-vcpkg/workflows/Linux/badge.svg?branch=master)](https://github.com/mcgoo/cargo-vcpkg/actions?query=workflow%3ALinux)
 
-[Documentation](https://docs.rs/vcpkg) [Changelog](CHANGELOG.md)
+** This is to be the repository for the next release for cargo-vcpkg. The existing release is from mcgoo/vcpkg-rs. **
+
+[Documentation](https://docs.rs/cargo-vcpkg) [Changelog](CHANGELOG.md)
 
 This is a helper for finding libraries in a [Vcpkg](https://github.com/Microsoft/vcpkg) installation from cargo build scripts. It works similarly to [pkg-config](https://github.com/alexcrichton/pkg-config-rs). It works on Windows (MSVC ABI), Linux and MacOS.
 
