@@ -181,6 +181,7 @@ fn build(opt: Opt) -> Result<(), anyhow::Error> {
         cmd.arg("fetch");
         cmd.arg("--verbose");
         cmd.arg("--all");
+        cmd.current_dir(&vcpkg_root);
         let output = run_command(cmd, verbose).context("failed to run git fetch")?;
 
         if !output.status.success() {
