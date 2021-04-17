@@ -314,11 +314,11 @@ fn process_metadata(
     let mut vcpkg_ports = Vec::<String>::new();
     let mut rev_tag_branch: Option<RevSelector> = None;
     let mut vcpkg_triplet = None;
-    dbg!(&metadata.workspace_root);
-    dbg!(&metadata.workspace_metadata);
+    // dbg!(&metadata.workspace_root);
+    // dbg!(&metadata.workspace_metadata);
     for p in &metadata.packages {
-        println!("-------------");
-        dbg!(&p);
+        // println!("-------------");
+        // dbg!(&p);
         if let Ok(v) = serde_json::from_value::<Metadata>(p.metadata.clone()) {
             // dbg!(&v);
             let v = v.vcpkg;
