@@ -950,7 +950,13 @@ mod test {
         assert_eq!(vcpkg_ports, vec!["a", "d", "m"]);
     }
 
+    // This test is currently disabled as it isn't clear what the desired behavior is for when
+    // specifying vcpkg dependencies at the workspace level.  This is in part due to
+    // cargo-metadata not telling us which is the desired root crate (resolve.root == null) and
+    // ambiguity in this case as to which git rev to use as this is usually determined by the root
+    // crate.
     #[test]
+    #[ignore]
     fn combine_deps_from_all_crates_and_workspace() {
         let metadata = test::project()
             .file(
@@ -958,10 +964,10 @@ mod test {
                 r#"
                     [workspace]
                     members = ["top", "dep"]
-                    [xworkspace.metadata.vcpkg]
+                    [workspace.metadata.vcpkg]
                     dependencies = ["a"]
                     dev-dependencies = ["d"]
-                    [xworkspace.metadata.vcpkg.target]
+                    [workspace.metadata.vcpkg.target]
                     x86_64-pc-windows-msvc = { triplet = "x64-windows-static-md", dev-dependencies = ["b", "c"] } 
             "#,
             )
