@@ -146,7 +146,7 @@ fn build(opt: Opt) -> Result<(), anyhow::Error> {
         let target_directory = metadata.target_directory.clone();
         let mut vcpkg_root = target_directory;
         vcpkg_root.push("vcpkg");
-        vcpkg_root
+        vcpkg_root.into()
     });
     if verbose {
         println!("vcpkg root is {}", vcpkg_root.display());
