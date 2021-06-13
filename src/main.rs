@@ -14,8 +14,8 @@ use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use vcpkg::{find_vcpkg_root, Config};
 
 // settings for a specific Rust target
-#[serde(rename_all = "kebab-case")]
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 struct Target {
     triplet: Option<String>,
     // this dependencies key for a specific target overrides the main entry
@@ -25,8 +25,8 @@ struct Target {
     dev_dependencies: Option<Vec<String>>,
 }
 
-#[serde(rename_all = "kebab-case")]
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 struct Vcpkg {
     //  vcpkg_root: Option<String>,
     #[serde(default = "BTreeMap::new")]
@@ -146,7 +146,7 @@ fn build(opt: Opt) -> Result<(), anyhow::Error> {
         let target_directory = metadata.target_directory.clone();
         let mut vcpkg_root = target_directory;
         vcpkg_root.push("vcpkg");
-        vcpkg_root
+        vcpkg_root.into()
     });
     if verbose {
         println!("vcpkg root is {}", vcpkg_root.display());
@@ -314,11 +314,11 @@ fn process_metadata(
     let mut vcpkg_ports = Vec::<String>::new();
     let mut rev_tag_branch: Option<RevSelector> = None;
     let mut vcpkg_triplet = None;
-    dbg!(&metadata.workspace_root);
-    dbg!(&metadata.workspace_metadata);
+    // dbg!(&metadata.workspace_root);
+    // dbg!(&metadata.workspace_metadata);
     for p in &metadata.packages {
-        println!("-------------");
-        dbg!(&p);
+        // println!("-------------");
+        // dbg!(&p);
         if let Ok(v) = serde_json::from_value::<Metadata>(p.metadata.clone()) {
             // dbg!(&v);
             let v = v.vcpkg;
@@ -950,7 +950,13 @@ mod test {
         assert_eq!(vcpkg_ports, vec!["a", "d", "m"]);
     }
 
+    // This test is currently disabled as it isn't clear what the desired behavior is for when
+    // specifying vcpkg dependencies at the workspace level.  This is in part due to
+    // cargo-metadata not telling us which is the desired root crate (resolve.root == null) and
+    // ambiguity in this case as to which git rev to use as this is usually determined by the root
+    // crate.
     #[test]
+    #[ignore]
     fn combine_deps_from_all_crates_and_workspace() {
         let metadata = test::project()
             .file(
@@ -958,10 +964,10 @@ mod test {
                 r#"
                     [workspace]
                     members = ["top", "dep"]
-                    [xworkspace.metadata.vcpkg]
+                    [workspace.metadata.vcpkg]
                     dependencies = ["a"]
                     dev-dependencies = ["d"]
-                    [xworkspace.metadata.vcpkg.target]
+                    [workspace.metadata.vcpkg.target]
                     x86_64-pc-windows-msvc = { triplet = "x64-windows-static-md", dev-dependencies = ["b", "c"] } 
             "#,
             )

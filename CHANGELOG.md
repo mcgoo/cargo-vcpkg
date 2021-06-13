@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html) as implemented by Cargo.
 
+## [0.1.6] - 2021-06-12
+
+## Changed
+
+- Released from new home mcgoo/cargo-vcpkg.
+
+## Fixes
+
+- `./target/vcpkg` may not have been getting refreshed properly when tracking branches when running `cargo vcpkg build`.
+- Warnings addressed for newer releases of rust.
+
 ## [0.1.5] - 2020-06-10
 
 ### Fixes

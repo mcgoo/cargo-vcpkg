@@ -2,8 +2,8 @@
 
 ## Making a release
 
-1. run vcpkg_cli and test it
-1. run systest\test.cmd
+1. `cargo test`
+1. run `./wstest/run.sh` as local integration test.
 1. check that everything is committed and work dir is clean
 1. push to master on github
 1. check that github actions ci passes
@@ -12,7 +12,7 @@
 1. commit
 1. push
 1. wait for the ci to work
-1. create a tag for the right crate like `git tag vcpkg-rs-0.2.3`
+1. create a tag for the crate like `git tag cargo-vcpkg-0.1.5`
 1. cd to the crate dir and run `cargo publish`
 1. git push origin --tags
 
