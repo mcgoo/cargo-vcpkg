@@ -202,7 +202,9 @@ fn build(opt: Opt) -> Result<(), anyhow::Error> {
     }
 
     // check out the required rev
-    let rev_tag_branch = rev_tag_branch.unwrap();
+    let rev_tag_branch = rev_tag_branch.ok_or_else(|| {
+        anyhow::anyhow!("did not find vcpkg Cargo metadata with branch/rev/tag for git source")
+    })?;
     let (desc, rev_tag_branch, do_pull) = match rev_tag_branch {
         RevSelector::Rev(r) => ("rev", r, false),
         RevSelector::Tag(t) => ("tag", t, false), //?
