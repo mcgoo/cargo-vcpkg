@@ -57,6 +57,29 @@ dev-dependencies = ["sdl2-image"]
 x86_64-apple-darwin = { dev-dependencies = ["sdl2-gfx" ] }
 ```
 
+## Overlay triplets
+
+Setting the `overlay-triplets-path` key allows you use custom [triplet files] in
+your build. The value of this key should be the path to a directory containing
+triplet files. These files will be made available during the vcpkg build through
+its `--overlay-triplets` argument.
+
+[triplet files]: https://vcpkg.readthedocs.io/en/latest/users/triplets/
+
+```toml
+[package.metadata.vcpkg]
+git = "https://github.com/microsoft/vcpkg"
+rev = "4c1db68"
+dependencies = ["sdl2"]
+overlay-triplets-path = "support/custom-triplets"
+
+[package.metadata.vcpkg.target]
+x86_64-pc-windows-msvc = { triplet = "x64-windows-static-release" }
+```
+
+Here, the repository should contain a file named
+`support/custom-triplets/x64-windows-static-release.cmake`.
+
 ## Installation
 
 Install by running

@@ -3,7 +3,8 @@ use anyhow::{bail, Context};
 use serde::Deserialize;
 use std::{
     collections::BTreeMap,
-    fs::File,
+    ffi::OsString,
+    fs::{canonicalize, File},
     io::{BufRead, BufReader, Cursor, Write},
     process::{Command, Output, Stdio},
     str,
@@ -40,7 +41,9 @@ struct Vcpkg {
     dependencies: Option<Vec<String>>,
     dev_dependencies: Option<Vec<String>>,
 
-    //
+    overlay_triplets_path: Option<String>,
+
+    // Was this ever used??
     build_type: Option<String>,
 }
 #[derive(Debug, Deserialize)]
@@ -135,7 +138,7 @@ fn build(opt: Opt) -> Result<(), anyhow::Error> {
     }
     let metadata = cmd.exec()?;
 
-    let (git_url, vcpkg_ports, rev_tag_branch, vcpkg_triplet, root_crate) =
+    let (git_url, vcpkg_ports, rev_tag_branch, vcpkg_triplet, overlay_triplets_path, root_crate) =
         process_metadata(&metadata, &target_triple)?;
 
     // should we modify the existing?
@@ -252,6 +255,16 @@ fn build(opt: Opt) -> Result<(), anyhow::Error> {
     // TODO: upgrade anything that is installed
     print_tag("Installing", &vcpkg_ports.join(" "));
     let mut v = vcpkg_command(&vcpkg_root, &vcpkg_triplet);
+
+    if let Some(otp) = overlay_triplets_path {
+        // the vcpkg command is run from the vcpkg root directory, so we need to
+        // resolve the overlay path since it's probably relative.
+        let mut otarg = OsString::new();
+        otarg.push("--overlay-triplets=");
+        otarg.push(canonicalize(otp).context("could not canonicalize overlay-triplets-path")?);
+        v.arg(otarg);
+    }
+
     v.arg("install");
     v.arg("--recurse");
     v.args(vcpkg_ports.as_slice());
@@ -302,6 +315,7 @@ fn process_metadata(
         Vec<String>,
         Option<RevSelector>,
         Option<String>,
+        Option<String>,
         cargo_metadata::PackageId,
     ),
     anyhow::Error,
@@ -316,6 +330,8 @@ fn process_metadata(
     let mut vcpkg_ports = Vec::<String>::new();
     let mut rev_tag_branch: Option<RevSelector> = None;
     let mut vcpkg_triplet = None;
+    let mut overlay_triplets_path = None;
+
     // dbg!(&metadata.workspace_root);
     // dbg!(&metadata.workspace_metadata);
     for p in &metadata.packages {
@@ -341,6 +357,11 @@ fn process_metadata(
                         bail!("must specify one of branch,rev,tag for git source");
                     }
                 };
+            }
+
+            // likewise for overlay settings
+            if v.overlay_triplets_path.is_some() && is_root_crate {
+                overlay_triplets_path = v.overlay_triplets_path;
             }
 
             // if there is specific configuration for the target and it has
@@ -382,6 +403,7 @@ fn process_metadata(
         vcpkg_ports,
         rev_tag_branch,
         vcpkg_triplet,
+        overlay_triplets_path,
         root_crate.clone(),
     ))
 }
@@ -746,7 +768,7 @@ mod test {
             .metadata("top/Cargo.toml")
             .unwrap();
 
-        let (_, vcpkg_ports, _, _, _) = process_metadata(&metadata, "").unwrap();
+        let (_, vcpkg_ports, _, _, _, _) = process_metadata(&metadata, "").unwrap();
 
         assert_eq!(vcpkg_ports, vec!["z85"]);
     }
@@ -771,7 +793,7 @@ mod test {
                         [package.metadata.vcpkg]
                         install = ["z85"]
                         [package.metadata.vcpkg.target]
-                        x86_64-pc-windows-msvc = { triplet = "x64-windows-static-md" } 
+                        x86_64-pc-windows-msvc = { triplet = "x64-windows-static-md" }
                     "#,
                 ),
             )
@@ -791,7 +813,7 @@ mod test {
             .metadata("top/Cargo.toml")
             .unwrap();
 
-        let (_, vcpkg_ports, _, vcpkg_triplet, _) =
+        let (_, vcpkg_ports, _, vcpkg_triplet, _, _) =
             process_metadata(&metadata, "x86_64-pc-windows-msvc").unwrap();
 
         assert_eq!(vcpkg_ports, vec!["z85"]);
@@ -820,7 +842,7 @@ mod test {
                         dependencies = ["a"]
                         dev-dependencies = ["b"]
                         [package.metadata.vcpkg.target]
-                        x86_64-pc-windows-msvc = { triplet = "x64-windows-static-md" } 
+                        x86_64-pc-windows-msvc = { triplet = "x64-windows-static-md" }
                     "#,
                 ),
             )
@@ -840,7 +862,7 @@ mod test {
             .metadata("top/Cargo.toml")
             .unwrap();
 
-        let (_, mut vcpkg_ports, _, vcpkg_triplet, _) =
+        let (_, mut vcpkg_ports, _, vcpkg_triplet, _, _) =
             process_metadata(&metadata, "x86_64-pc-windows-msvc").unwrap();
         vcpkg_ports.sort();
         assert_eq!(vcpkg_ports, vec!["a", "b"]);
@@ -868,7 +890,7 @@ mod test {
                         [package.metadata.vcpkg]
                         install = ["z85"]
                         [package.metadata.vcpkg.target]
-                        x86_64-pc-windows-msvc = { triplet = "x64-windows-static-md", dependencies = [] } 
+                        x86_64-pc-windows-msvc = { triplet = "x64-windows-static-md", dependencies = [] }
                     "#,
                 ),
             )
@@ -888,7 +910,7 @@ mod test {
             .metadata("top/Cargo.toml")
             .unwrap();
 
-        let (_, vcpkg_ports, _, vcpkg_triplet, _) =
+        let (_, vcpkg_ports, _, vcpkg_triplet, _, _) =
             process_metadata(&metadata, "x86_64-pc-windows-msvc").unwrap();
 
         assert_eq!(vcpkg_ports, Vec::<String>::new());
@@ -917,7 +939,7 @@ mod test {
                         dependencies = ["a"]
                         dev-dependencies = ["d"]
                         [package.metadata.vcpkg.target]
-                        x86_64-pc-windows-msvc = { triplet = "x64-windows-static-md", dev-dependencies = ["b", "c"] } 
+                        x86_64-pc-windows-msvc = { triplet = "x64-windows-static-md", dev-dependencies = ["b", "c"] }
                     "#,
                 ),
             )
@@ -933,7 +955,7 @@ mod test {
                 dependencies = ["m"]
                 dev-dependencies = ["n"]
                 [package.metadata.vcpkg.target]
-                x86_64-pc-windows-msvc = { triplet = "x64-windows-static-md", dependencies = ["o"], dev-dependencies = ["p"] } 
+                x86_64-pc-windows-msvc = { triplet = "x64-windows-static-md", dependencies = ["o"], dev-dependencies = ["p"] }
             "#,
                 ),
             )
@@ -941,13 +963,13 @@ mod test {
             .metadata("top/Cargo.toml")
             .unwrap();
 
-        let (_, mut vcpkg_ports, _, vcpkg_triplet, _) =
+        let (_, mut vcpkg_ports, _, vcpkg_triplet, _, _) =
             process_metadata(&metadata, "x86_64-pc-windows-msvc").unwrap();
         vcpkg_ports.sort();
         assert_eq!(vcpkg_ports, vec!["a", "b", "c", "o"]);
         assert_eq!(vcpkg_triplet, Some("x64-windows-static-md".to_owned()));
 
-        let (_, mut vcpkg_ports, _, _, _) = process_metadata(&metadata, "").unwrap();
+        let (_, mut vcpkg_ports, _, _, _, _) = process_metadata(&metadata, "").unwrap();
         vcpkg_ports.sort();
         assert_eq!(vcpkg_ports, vec!["a", "d", "m"]);
     }
@@ -970,7 +992,7 @@ mod test {
                     dependencies = ["a"]
                     dev-dependencies = ["d"]
                     [workspace.metadata.vcpkg.target]
-                    x86_64-pc-windows-msvc = { triplet = "x64-windows-static-md", dev-dependencies = ["b", "c"] } 
+                    x86_64-pc-windows-msvc = { triplet = "x64-windows-static-md", dev-dependencies = ["b", "c"] }
             "#,
             )
             .file(
@@ -996,7 +1018,7 @@ mod test {
                 dependencies = ["m"]
                 dev-dependencies = ["n"]
                 [package.metadata.vcpkg.target]
-                x86_64-pc-windows-msvc = { triplet = "x64-windows-static-md", dependencies = ["o"], dev-dependencies = ["p"] } 
+                x86_64-pc-windows-msvc = { triplet = "x64-windows-static-md", dependencies = ["o"], dev-dependencies = ["p"] }
             "#,
                 ),
             )
@@ -1004,13 +1026,13 @@ mod test {
             .metadata("top/Cargo.toml")
             .unwrap();
 
-        let (_, mut vcpkg_ports, _, vcpkg_triplet, _) =
+        let (_, mut vcpkg_ports, _, vcpkg_triplet, _, _) =
             process_metadata(&metadata, "x86_64-pc-windows-msvc").unwrap();
         vcpkg_ports.sort();
         assert_eq!(vcpkg_ports, vec!["a", "b", "c", "o"]);
         assert_eq!(vcpkg_triplet, Some("x64-windows-static-md".to_owned()));
 
-        let (_, mut vcpkg_ports, _, _, _) = process_metadata(&metadata, "").unwrap();
+        let (_, mut vcpkg_ports, _, _, _, _) = process_metadata(&metadata, "").unwrap();
         vcpkg_ports.sort();
         assert_eq!(vcpkg_ports, vec!["a", "d", "m"]);
     }
