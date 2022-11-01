@@ -44,6 +44,7 @@ struct Vcpkg {
     overlay_triplets_path: Option<String>,
 
     // Was this ever used??
+    #[allow(dead_code)]
     build_type: Option<String>,
 }
 #[derive(Debug, Deserialize)]
