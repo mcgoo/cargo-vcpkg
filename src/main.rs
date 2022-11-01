@@ -47,10 +47,12 @@ struct Vcpkg {
     #[allow(dead_code)]
     build_type: Option<String>,
 }
+
 #[derive(Debug, Deserialize)]
 struct Metadata {
     vcpkg: Vcpkg,
 }
+
 #[derive(Debug, PartialEq, StructOpt)]
 /// Install vcpkg and build packages
 ///
@@ -93,6 +95,7 @@ enum Subcommands {
     // Cargo(Vec<String>),
 }
 
+#[derive(Debug)]
 enum RevSelector {
     Rev(String),
     Tag(String),
@@ -139,8 +142,7 @@ fn build(opt: Opt) -> Result<(), anyhow::Error> {
     }
     let metadata = cmd.exec()?;
 
-    let (git_url, vcpkg_ports, rev_tag_branch, vcpkg_triplet, overlay_triplets_path, root_crate) =
-        process_metadata(&metadata, &target_triple)?;
+    let vmd = process_metadata(&metadata, &target_triple)?;
 
     // should we modify the existing?
     // let mut allow_updates = true;
@@ -159,7 +161,7 @@ fn build(opt: Opt) -> Result<(), anyhow::Error> {
     let mut vcpkg_root_file = vcpkg_root.clone();
     vcpkg_root_file.push(".vcpkg-root");
     if !vcpkg_root_file.exists() {
-        let git_url = git_url.context(format!(
+        let git_url = vmd.git_url.context(format!(
             "could not find a vcpkg installation and crate \n\
         {} does not specify a git repository to clone from. \n\n\
         Add a [package.metadata.vcpkg] section to the root crate's\n\
@@ -169,7 +171,7 @@ fn build(opt: Opt) -> Result<(), anyhow::Error> {
         [package.metadata.vcpkg]\n\
         git = \"https://github.com/microsoft/vcpkg\"\n\
         branch = \"master\" ",
-            root_crate
+            vmd.root_crate
         ))?;
         print_tag("Cloning", &git_url);
         let mut cmd = Command::new("git");
@@ -206,7 +208,7 @@ fn build(opt: Opt) -> Result<(), anyhow::Error> {
     }
 
     // check out the required rev
-    let rev_tag_branch = rev_tag_branch.ok_or_else(|| {
+    let rev_tag_branch = vmd.rev_tag_branch.ok_or_else(|| {
         anyhow::anyhow!("did not find vcpkg Cargo metadata with branch/rev/tag for git source")
     })?;
     let (desc, rev_tag_branch, do_pull) = match rev_tag_branch {
@@ -231,7 +233,7 @@ fn build(opt: Opt) -> Result<(), anyhow::Error> {
         run_command(cmd, verbose).context("failed to execute process")?;
     }
     // try and run 'vcpkg update' and if it fails or gives the version warning, rebuild it
-    let require_bootstrap = match vcpkg_command(&vcpkg_root, &vcpkg_triplet)
+    let require_bootstrap = match vcpkg_command(&vcpkg_root, &vmd.vcpkg_triplet)
         .arg("update")
         .output()
     {
@@ -254,10 +256,10 @@ fn build(opt: Opt) -> Result<(), anyhow::Error> {
     }
 
     // TODO: upgrade anything that is installed
-    print_tag("Installing", &vcpkg_ports.join(" "));
-    let mut v = vcpkg_command(&vcpkg_root, &vcpkg_triplet);
+    print_tag("Installing", &vmd.vcpkg_ports.join(" "));
+    let mut v = vcpkg_command(&vcpkg_root, &vmd.vcpkg_triplet);
 
-    if let Some(otp) = overlay_triplets_path {
+    if let Some(otp) = vmd.overlay_triplets_path {
         // the vcpkg command is run from the vcpkg root directory, so we need to
         // resolve the overlay path since it's probably relative.
         let mut otarg = OsString::new();
@@ -268,7 +270,7 @@ fn build(opt: Opt) -> Result<(), anyhow::Error> {
 
     v.arg("install");
     v.arg("--recurse");
-    v.args(vcpkg_ports.as_slice());
+    v.args(vmd.vcpkg_ports.as_slice());
     v.stdout(Stdio::piped());
 
     let mut output = v.spawn()?;
@@ -307,20 +309,20 @@ fn build(opt: Opt) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
+#[derive(Debug)]
+struct VcpkgMetadata {
+    pub git_url: Option<String>,
+    pub vcpkg_ports: Vec<String>,
+    pub rev_tag_branch: Option<RevSelector>,
+    pub vcpkg_triplet: Option<String>,
+    pub overlay_triplets_path: Option<String>,
+    pub root_crate: cargo_metadata::PackageId,
+}
+
 fn process_metadata(
     metadata: &cargo_metadata::Metadata,
     target_triple: &str,
-) -> Result<
-    (
-        Option<String>,
-        Vec<String>,
-        Option<RevSelector>,
-        Option<String>,
-        Option<String>,
-        cargo_metadata::PackageId,
-    ),
-    anyhow::Error,
-> {
+) -> Result<VcpkgMetadata, anyhow::Error> {
     let dep_graph = metadata.resolve.as_ref().unwrap();
     let root_crate = dep_graph
         .root
@@ -399,14 +401,15 @@ fn process_metadata(
             }
         }
     }
-    Ok((
+
+    Ok(VcpkgMetadata {
         git_url,
         vcpkg_ports,
         rev_tag_branch,
         vcpkg_triplet,
         overlay_triplets_path,
-        root_crate.clone(),
-    ))
+        root_crate: root_crate.clone(),
+    })
 }
 
 fn target_triple() -> String {
@@ -565,12 +568,14 @@ mod test {
         env, fs,
         path::{Path, PathBuf},
     };
+
     // Cadged from https://github.com/rust-lang/cargo/tree/master/crates/cargo-test-support
     #[derive(Default)]
     pub(super) struct ProjectBuilder {
         root: PathBuf,
         //  files:
     }
+
     pub(super) fn project() -> ProjectBuilder {
         static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
         let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
@@ -649,6 +654,7 @@ mod test {
                 .unwrap_or_else(|e| panic!("failed to mkdir_p {}: {}", self.display(), e))
         }
     }
+
     pub fn basic_manifest(name: &str, version: &str) -> String {
         format!(
             r#"
@@ -660,6 +666,7 @@ mod test {
             name, version
         )
     }
+
     pub fn extended_manifest(name: &str, version: &str, tail: &str) -> String {
         format!("{}\n\n{}", &basic_manifest(name, version), tail)
     }
@@ -769,10 +776,10 @@ mod test {
             .metadata("top/Cargo.toml")
             .unwrap();
 
-        let (_, vcpkg_ports, _, _, _, _) = process_metadata(&metadata, "").unwrap();
-
-        assert_eq!(vcpkg_ports, vec!["z85"]);
+        let vmd = process_metadata(&metadata, "").unwrap();
+        assert_eq!(vmd.vcpkg_ports, vec!["z85"]);
     }
+
     #[test]
     fn same_dependencies_but_specified_triplet() {
         let metadata = test::project()
@@ -814,11 +821,9 @@ mod test {
             .metadata("top/Cargo.toml")
             .unwrap();
 
-        let (_, vcpkg_ports, _, vcpkg_triplet, _, _) =
-            process_metadata(&metadata, "x86_64-pc-windows-msvc").unwrap();
-
-        assert_eq!(vcpkg_ports, vec!["z85"]);
-        assert_eq!(vcpkg_triplet, Some("x64-windows-static-md".to_owned()));
+        let vmd = process_metadata(&metadata, "x86_64-pc-windows-msvc").unwrap();
+        assert_eq!(vmd.vcpkg_ports, vec!["z85"]);
+        assert_eq!(vmd.vcpkg_triplet, Some("x64-windows-static-md".to_owned()));
     }
 
     #[test]
@@ -863,11 +868,10 @@ mod test {
             .metadata("top/Cargo.toml")
             .unwrap();
 
-        let (_, mut vcpkg_ports, _, vcpkg_triplet, _, _) =
-            process_metadata(&metadata, "x86_64-pc-windows-msvc").unwrap();
-        vcpkg_ports.sort();
-        assert_eq!(vcpkg_ports, vec!["a", "b"]);
-        assert_eq!(vcpkg_triplet, Some("x64-windows-static-md".to_owned()));
+        let mut vmd = process_metadata(&metadata, "x86_64-pc-windows-msvc").unwrap();
+        vmd.vcpkg_ports.sort();
+        assert_eq!(vmd.vcpkg_ports, vec!["a", "b"]);
+        assert_eq!(vmd.vcpkg_triplet, Some("x64-windows-static-md".to_owned()));
     }
 
     #[test]
@@ -911,11 +915,9 @@ mod test {
             .metadata("top/Cargo.toml")
             .unwrap();
 
-        let (_, vcpkg_ports, _, vcpkg_triplet, _, _) =
-            process_metadata(&metadata, "x86_64-pc-windows-msvc").unwrap();
-
-        assert_eq!(vcpkg_ports, Vec::<String>::new());
-        assert_eq!(vcpkg_triplet, Some("x64-windows-static-md".to_owned()));
+        let vmd = process_metadata(&metadata, "x86_64-pc-windows-msvc").unwrap();
+        assert_eq!(vmd.vcpkg_ports, Vec::<String>::new());
+        assert_eq!(vmd.vcpkg_triplet, Some("x64-windows-static-md".to_owned()));
     }
 
     #[test]
@@ -964,15 +966,14 @@ mod test {
             .metadata("top/Cargo.toml")
             .unwrap();
 
-        let (_, mut vcpkg_ports, _, vcpkg_triplet, _, _) =
-            process_metadata(&metadata, "x86_64-pc-windows-msvc").unwrap();
-        vcpkg_ports.sort();
-        assert_eq!(vcpkg_ports, vec!["a", "b", "c", "o"]);
-        assert_eq!(vcpkg_triplet, Some("x64-windows-static-md".to_owned()));
+        let mut vmd = process_metadata(&metadata, "x86_64-pc-windows-msvc").unwrap();
+        vmd.vcpkg_ports.sort();
+        assert_eq!(vmd.vcpkg_ports, vec!["a", "b", "c", "o"]);
+        assert_eq!(vmd.vcpkg_triplet, Some("x64-windows-static-md".to_owned()));
 
-        let (_, mut vcpkg_ports, _, _, _, _) = process_metadata(&metadata, "").unwrap();
-        vcpkg_ports.sort();
-        assert_eq!(vcpkg_ports, vec!["a", "d", "m"]);
+        let mut vmd = process_metadata(&metadata, "").unwrap();
+        vmd.vcpkg_ports.sort();
+        assert_eq!(vmd.vcpkg_ports, vec!["a", "d", "m"]);
     }
 
     // This test is currently disabled as it isn't clear what the desired behavior is for when
@@ -1027,14 +1028,13 @@ mod test {
             .metadata("top/Cargo.toml")
             .unwrap();
 
-        let (_, mut vcpkg_ports, _, vcpkg_triplet, _, _) =
-            process_metadata(&metadata, "x86_64-pc-windows-msvc").unwrap();
-        vcpkg_ports.sort();
-        assert_eq!(vcpkg_ports, vec!["a", "b", "c", "o"]);
-        assert_eq!(vcpkg_triplet, Some("x64-windows-static-md".to_owned()));
+        let mut vmd = process_metadata(&metadata, "x86_64-pc-windows-msvc").unwrap();
+        vmd.vcpkg_ports.sort();
+        assert_eq!(vmd.vcpkg_ports, vec!["a", "b", "c", "o"]);
+        assert_eq!(vmd.vcpkg_triplet, Some("x64-windows-static-md".to_owned()));
 
-        let (_, mut vcpkg_ports, _, _, _, _) = process_metadata(&metadata, "").unwrap();
-        vcpkg_ports.sort();
-        assert_eq!(vcpkg_ports, vec!["a", "d", "m"]);
+        let mut vmd = process_metadata(&metadata, "").unwrap();
+        vmd.vcpkg_ports.sort();
+        assert_eq!(vmd.vcpkg_ports, vec!["a", "d", "m"]);
     }
 }
