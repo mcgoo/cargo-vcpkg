@@ -1,7 +1,5 @@
 # cargo-vcpkg [![Windows](https://github.com/mcgoo/vcpkg-rs/workflows/Windows/badge.svg?branch=master)](https://github.com/mcgoo/vcpkg-rs/actions?query=workflow%3AWindows) [![macOS](https://github.com/mcgoo/vcpkg-rs/workflows/macOS/badge.svg?branch=master)](https://github.com/mcgoo/vcpkg-rs/actions?query=workflow%3AmacOS) [![Linux](https://github.com/mcgoo/vcpkg-rs/workflows/Linux/badge.svg?branch=master)](https://github.com/mcgoo/vcpkg-rs/actions?query=workflow%3ALinux)
 
-### This is the version that cargo-vcpkg has been released from since 0.1.6. Previous versions were homed at mcgoo/vcpkg-rs. crates.io/vcpkg needs older Rust for compatibility with older projects, while cargo-vcpkg would like to track new versions for the latest features in Cargo.toml, hense the split of repos between components.
-
 [Changelog](https://github.com/mcgoo/vcpkg-rs/blob/master/cargo-vcpkg/CHANGELOG.md)
 
 This command `cargo vcpkg` will create a [vcpkg](https://github.com/microsoft/vcpkg) tree and install the packages specified in `Cargo.toml` files in the crate being built and crates it depends on. Crates that use the [vcpkg crate](https://crates.io/crates/vcpkg) will be able to find libraries automatically.
@@ -87,6 +85,7 @@ Install by running
 ```
 cargo install cargo-vcpkg
 ```
+crates.io/vcpkg needs older Rust for compatibility with older projects, while cargo-vcpkg would like to track new versions for the latest features in Cargo.toml, hense the split of repos between components.
 
 ## License
 
